@@ -1,7 +1,7 @@
 from typing import Tuple, Optional, Callable
 
-import torch
-from torch.optim.optimizer import Optimizer
+import paddle
+from paddle.optimizer import Optimizer
 
 # functions
 
@@ -44,7 +44,7 @@ class Lion(Optimizer):
             weight_decay = weight_decay
         )
 
-        super().__init__(params, defaults)
+        super().__init__(lr, params, weight_decay)
 
         self.update_fn = update_fn
 
@@ -52,7 +52,7 @@ class Lion(Optimizer):
             from lion_pytorch.triton import update_fn as triton_update_fn
             self.update_fn = triton_update_fn
 
-    @torch.no_grad()
+    @paddle.no_grad()
     def step(
         self,
         closure: Optional[Callable] = None
@@ -60,10 +60,10 @@ class Lion(Optimizer):
 
         loss = None
         if exists(closure):
-            with torch.enable_grad():
+            with paddle.enable_grad():
                 loss = closure()
 
-        for group in self.param_groups:
+        for group in self._param_groups:
             for p in filter(lambda p: exists(p.grad), group['params']):
 
                 grad, lr, wd, beta1, beta2, state = p.grad, group['lr'], group['weight_decay'], *group['betas'], self.state[p]
@@ -71,7 +71,7 @@ class Lion(Optimizer):
                 # init state - exponential moving average of gradient values
 
                 if len(state) == 0:
-                    state['exp_avg'] = torch.zeros_like(p)
+                    state['exp_avg'] = paddle.zeros_like(p)
 
                 exp_avg = state['exp_avg']
 
